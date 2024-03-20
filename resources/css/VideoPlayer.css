@@ -1,0 +1,516 @@
+.player-wrapper {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    display: flex;
+    justify-content: center;
+}
+
+.player-controls-bg {
+    opacity: 1;
+    position: absolute;
+    left: 0;
+    height: 120px;
+    width: 100%;
+    bottom: 0;
+    background: linear-gradient(180deg, rgba(32, 32, 32, 0) 0%, #000000d1 100%);
+    z-index: 90;
+    display: block;
+    transition: .5s all ease;
+}
+
+.player-controls-bg-top {
+    opacity: 1;
+    visibility: visible;
+    position: absolute;
+    left: 0;
+    height: 120px;
+    width: 100%;
+    top: 0;
+    background: linear-gradient(0, rgba(32, 32, 32, 0) 0%, #000000d1 100%);
+    z-index: 90;
+    display: block;
+    transition: .5s all ease;
+}
+
+.player-controls-wrapper {
+    opacity: 1;
+    visibility: visible;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 30px);
+    bottom: 15px;
+    color: white;
+    z-index: 91;
+    display: flex;
+    justify-content: space-between;
+    flex-direction: column;
+    transition: .5s all ease;
+}
+
+.controles-container {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+}
+
+.player-hide {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.player-left-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.player-play,
+.player-pause {
+    margin-right: 10px;
+    color: transparent;
+    height: 22px;
+    width: 22px;
+}
+
+.player-play::after {
+    content: "";
+    position: absolute;
+    bottom: 5px;
+    width: 21px;
+    height: 21px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: white;
+    -webkit-mask-size: cover;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-image: url('../../storage/app/icons/playIcon.svg');
+}
+
+.player-pause::after {
+    content: "";
+    position: absolute;
+    bottom: 5px;
+    width: 21px;
+    height: 21px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: white;
+    -webkit-mask-size: cover;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-image: url('../../storage/app/icons/pauseIcon.svg');
+}
+
+.volume-high::after {
+    content: "";
+    width: 25px;
+    height: 21px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: white;
+    -webkit-mask-size: cover;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-image: url('../../storage/app/icons/volumeFull.svg');
+}
+
+.volume-mute::after {
+    content: "";
+    width: 25px;
+    height: 21px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: white;
+    -webkit-mask-size: cover;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-image: url('../../storage/app/icons/volumeMute.svg');
+}
+
+.volume-mute-big::after {
+    content: "";
+    width: 53px;
+    height: 44px;
+    z-index: 99;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: white;
+    -webkit-mask-size: cover;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-image: url('../../storage/app/icons/volumeMute.svg');
+}
+
+.volume-low::after {
+    content: "";
+    width: 25px;
+    height: 21px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: white;
+    -webkit-mask-size: cover;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-image: url('../../storage/app/icons/volumeLow.svg');
+}
+
+.volume-mid::after {
+    content: "";
+    width: 25px;
+    height: 21px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: white;
+    -webkit-mask-size: cover;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-image: url('../../storage/app/icons/volumeMid.svg');
+}
+
+.player-right-controls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.fullscreen-icon::after {
+    content: "";
+    width: 24px;
+    height: 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: white;
+    -webkit-mask-size: cover;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-image: url('../../storage/app/icons/fullscreenIcon.svg');
+}
+
+.pip-icon::after {
+    content: "";
+    width: 24px;
+    height: 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: white;
+    -webkit-mask-size: cover;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-image: url('../../storage/app/icons/pipIcon.svg');
+}
+
+.settings-icon::after {
+    content: "";
+    width: 24px;
+    height: 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: white;
+    -webkit-mask-size: cover;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-image: url('../../storage/app/icons/settingIcon.svg');
+}
+
+
+/* Buffer Loading */
+
+#wifi-loader {
+    --background: #62ABFF;
+    --front-color: #4F29F0;
+    --back-color: #C3C8DE;
+    --text-color: #414856;
+    width: 64px;
+    height: 64px;
+    border-radius: 50px;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#wifi-loader svg {
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#wifi-loader svg circle {
+    position: absolute;
+    fill: none;
+    stroke-width: 6px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transform: rotate(-100deg);
+    transform-origin: center;
+}
+
+#wifi-loader svg circle.back {
+    stroke: var(--back-color);
+}
+
+#wifi-loader svg circle.front {
+    stroke: var(--front-color);
+}
+
+#wifi-loader svg.circle-outer {
+    height: 86px;
+    width: 86px;
+}
+
+#wifi-loader svg.circle-outer circle {
+    stroke-dasharray: 62.75 188.25;
+}
+
+#wifi-loader svg.circle-outer circle.back {
+    -webkit-animation: circle-outer 1.8s ease infinite 0.3s;
+    animation: circle-outer 1.8s ease infinite 0.3s;
+}
+
+#wifi-loader svg.circle-outer circle.front {
+    -webkit-animation: circle-outer 1.8s ease infinite 0.15s;
+    animation: circle-outer 1.8s ease infinite 0.15s;
+}
+
+#wifi-loader svg.circle-middle {
+    height: 60px;
+    width: 60px;
+}
+
+#wifi-loader svg.circle-middle circle {
+    stroke-dasharray: 42.5 127.5;
+}
+
+#wifi-loader svg.circle-middle circle.back {
+    -webkit-animation: circle-middle 1.8s ease infinite 0.25s;
+    animation: circle-middle 1.8s ease infinite 0.25s;
+}
+
+#wifi-loader svg.circle-middle circle.front {
+    -webkit-animation: circle-middle 1.8s ease infinite 0.1s;
+    animation: circle-middle 1.8s ease infinite 0.1s;
+}
+
+#wifi-loader svg.circle-inner {
+    height: 34px;
+    width: 34px;
+}
+
+#wifi-loader svg.circle-inner circle {
+    stroke-dasharray: 22 66;
+}
+
+#wifi-loader svg.circle-inner circle.back {
+    -webkit-animation: circle-inner 1.8s ease infinite 0.2s;
+    animation: circle-inner 1.8s ease infinite 0.2s;
+}
+
+#wifi-loader svg.circle-inner circle.front {
+    -webkit-animation: circle-inner 1.8s ease infinite 0.05s;
+    animation: circle-inner 1.8s ease infinite 0.05s;
+}
+
+#wifi-loader .text {
+    position: absolute;
+    bottom: -40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-transform: lowercase;
+    font-weight: 500;
+    font-size: 14px;
+    letter-spacing: 0.2px;
+}
+
+#wifi-loader .text::before,
+#wifi-loader .text::after {
+    content: attr(data-text);
+}
+
+#wifi-loader .text::before {
+    color: var(--text-color);
+}
+
+#wifi-loader .text::after {
+    color: var(--front-color);
+    -webkit-animation: text-animation 3.6s ease infinite;
+    animation: text-animation 3.6s ease infinite;
+    position: absolute;
+    left: 0;
+}
+
+@-webkit-keyframes circle-outer {
+    0% {
+        stroke-dashoffset: 25;
+    }
+
+    25% {
+        stroke-dashoffset: 0;
+    }
+
+    65% {
+        stroke-dashoffset: 301;
+    }
+
+    80% {
+        stroke-dashoffset: 276;
+    }
+
+    100% {
+        stroke-dashoffset: 276;
+    }
+}
+
+@keyframes circle-outer {
+    0% {
+        stroke-dashoffset: 25;
+    }
+
+    25% {
+        stroke-dashoffset: 0;
+    }
+
+    65% {
+        stroke-dashoffset: 301;
+    }
+
+    80% {
+        stroke-dashoffset: 276;
+    }
+
+    100% {
+        stroke-dashoffset: 276;
+    }
+}
+
+@-webkit-keyframes circle-middle {
+    0% {
+        stroke-dashoffset: 17;
+    }
+
+    25% {
+        stroke-dashoffset: 0;
+    }
+
+    65% {
+        stroke-dashoffset: 204;
+    }
+
+    80% {
+        stroke-dashoffset: 187;
+    }
+
+    100% {
+        stroke-dashoffset: 187;
+    }
+}
+
+@keyframes circle-middle {
+    0% {
+        stroke-dashoffset: 17;
+    }
+
+    25% {
+        stroke-dashoffset: 0;
+    }
+
+    65% {
+        stroke-dashoffset: 204;
+    }
+
+    80% {
+        stroke-dashoffset: 187;
+    }
+
+    100% {
+        stroke-dashoffset: 187;
+    }
+}
+
+@-webkit-keyframes circle-inner {
+    0% {
+        stroke-dashoffset: 9;
+    }
+
+    25% {
+        stroke-dashoffset: 0;
+    }
+
+    65% {
+        stroke-dashoffset: 106;
+    }
+
+    80% {
+        stroke-dashoffset: 97;
+    }
+
+    100% {
+        stroke-dashoffset: 97;
+    }
+}
+
+@keyframes circle-inner {
+    0% {
+        stroke-dashoffset: 9;
+    }
+
+    25% {
+        stroke-dashoffset: 0;
+    }
+
+    65% {
+        stroke-dashoffset: 106;
+    }
+
+    80% {
+        stroke-dashoffset: 97;
+    }
+
+    100% {
+        stroke-dashoffset: 97;
+    }
+}
+
+@-webkit-keyframes text-animation {
+    0% {
+        -webkit-clip-path: inset(0 100% 0 0);
+        clip-path: inset(0 100% 0 0);
+    }
+
+    50% {
+        -webkit-clip-path: inset(0);
+        clip-path: inset(0);
+    }
+
+    100% {
+        -webkit-clip-path: inset(0 0 0 100%);
+        clip-path: inset(0 0 0 100%);
+    }
+}
+
+@keyframes text-animation {
+    0% {
+        -webkit-clip-path: inset(0 100% 0 0);
+        clip-path: inset(0 100% 0 0);
+    }
+
+    50% {
+        -webkit-clip-path: inset(0);
+        clip-path: inset(0);
+    }
+
+    100% {
+        -webkit-clip-path: inset(0 0 0 100%);
+        clip-path: inset(0 0 0 100%);
+    }
+}
+
+@media screen and (max-width: 1024px) {
+    ::cue {
+        font-size: 24pt;
+    }
+}
