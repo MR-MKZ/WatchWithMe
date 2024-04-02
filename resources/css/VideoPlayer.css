@@ -74,6 +74,42 @@
     width: 22px;
 }
 
+.player-play-center,
+.player-pause-center {
+    color: transparent;
+}
+
+.fadeInOut {
+    display: flex !important;
+    animation: hideAnimation .4s linear 1 normal forwards;
+}
+
+.player-play-center::after {
+    content: "";
+    width: 35px;
+    height: 35px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: white;
+    -webkit-mask-size: cover;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-image: url('../../storage/app/icons/playIcon.svg');
+}
+
+.player-pause-center::after {
+    content: "";
+    width: 35px;
+    height: 35px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: white;
+    -webkit-mask-size: cover;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-image: url('../../storage/app/icons/pauseIcon.svg');
+}
+
 .player-play::after {
     content: "";
     position: absolute;
@@ -512,5 +548,15 @@
 @media screen and (max-width: 1024px) {
     ::cue {
         font-size: 24pt;
+    }
+}
+
+@keyframes hideAnimation {
+    0% {
+        opacity: .8;
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1.8);
     }
 }

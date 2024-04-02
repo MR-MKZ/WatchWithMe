@@ -10,6 +10,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -33,7 +34,7 @@ class RegisteredUserController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:'.User::class,
+            'email' => 'required|string|email|max:255|unique:' . User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
@@ -42,6 +43,23 @@ class RegisteredUserController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
+
+        $file = $request->profilePhoto;
+
+
+        if (isset($file)) {
+            if ($file->extension() == "jpg" || $file->extension() == "jpeg" || $file->extension() == "png") {
+                $path = Storage::putFileAs(
+                    "/contents/users/" . $user->id,
+                    $file,
+                    $user->id . "." . $file->extension()
+                );
+                
+                $user->photo = $path;
+
+                $user->update();
+            }
+        }
 
         event(new Registered($user));
 

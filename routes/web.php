@@ -53,6 +53,7 @@ Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['au
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::post('/profile/photo', [ProfileController::class, 'updatePhoto'])->name('profile.updatephoto');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     // Room Handler Routes ------------------------------------------------------------------------
     Route::prefix('room')->group(function () {

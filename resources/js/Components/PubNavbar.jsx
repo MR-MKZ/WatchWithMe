@@ -120,8 +120,14 @@ export default function PubNavbar({auth, ...props}) {
                                     <BsChevronDown
                                         className={`${profileDropOpen ? "rotate-180" : "rotate-0"} sm:block  duration-300`}/>
                                     <p className='sm:block mobile:hidden'>{auth.user.name}</p>
-                                    <div className={profileBorder(auth.user.role)}><BiUser
-                                        className={profileIcon(auth.user.role)} size="20"/></div>
+                                    <div className={profileBorder(auth.user.role)}>
+                                        {auth.user.photo == null ? (
+                                            <BiUser className={profileIcon(auth.user.role)} size="20"/>
+                                        ) : (
+                                            <img src={"../" + auth.user.photo}
+                                                 className={`w-full aspect-square rounded-full object-cover`}/>
+                                        )}
+                                    </div>
                                 </div>
                                 <div
                                     className={`${profileDropOpen ? "flex opacity-100 lg:top-16 mobile:top-[52px]" : "opacity-0 top-10 hidden"

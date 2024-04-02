@@ -12,7 +12,15 @@ import {io} from "socket.io-client";
 
 // // window.io = require('socket.io-client');
 
-window.socket = io(window.location.hostname + ':7040')
+window.socket = io(window.location.hostname + ':7040', {
+    'reconnection': true,
+    'reconnectionDelay': 5000,
+    'reconnectionDelayMax': 10000,
+})
+
+window.socket.on('connect', () => {
+    console.log('Connected to server');
+});
 
 // console.log(window.location.href)
 

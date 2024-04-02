@@ -1,11 +1,12 @@
-import {StrictMode, useCallback, useEffect, useRef, useState} from "react";
+import {StrictMode, useEffect, useRef, useState} from "react";
 import VideoPlayer from "@/Components/VideoPlayer";
 import PubNavbar from '@/Components/PubNavbar';
 import {Scrollbar} from "react-scrollbars-custom";
 import {Link} from "@inertiajs/react";
 import {HiOutlineTrash} from "@react-icons/all-files/hi/HiOutlineTrash.js";
-import autoAnimate from "@formkit/auto-animate";
-import {io} from "socket.io-client";
+import {toast, ToastContainer} from "react-toastify";
+import 'react-toastify/dist/ReactToastify.css';
+import $ from 'jquery';
 
 export default function PartyHome({auth, roomData}) {
 
@@ -25,7 +26,7 @@ export default function PartyHome({auth, roomData}) {
     const [chatActive, setChatActive] = useState(true);
     const [videoPlaying, setVideoPlaying] = useState(false);
     const [inRoom, setInRoom] = useState(false);
-    const [roomReconnect, setRoomReconnect] = useState(0);
+    const [ping, setPing] = useState("N/A");
 
     const rightSidebarRef = useRef(null);
     const messagesRef = useRef(null);
@@ -40,7 +41,6 @@ export default function PartyHome({auth, roomData}) {
             if (!socket.connected) {
                 setConnectionStatus(false)
                 setInRoom(false)
-                // socket.connect()
             } else {
                 setConnectionStatus(true)
             }
@@ -50,16 +50,42 @@ export default function PartyHome({auth, roomData}) {
         }
     });
 
+    var pingStartTime;
+
+    useEffect(() => {
+        let sent = false
+        socket.on('pong', () => {
+            const reqPing = Date.now() - pingStartTime;
+            if (`${reqPing}ms` !== ping && !isNaN(reqPing)) {
+                setPing(`${reqPing}ms`)
+            }
+        });
+
+        let timer = setInterval(() => {
+            pingStartTime = Date.now();
+            socket.emit('ping');
+            sent = true
+        }, 5000);
+
+        return () => {
+            socket.off("pong")
+            clearInterval(timer)
+        }
+    }, []);
+
 
     const sendMsg = () => {
-        socket.emit('sendMessage', {
-            "userName": auth.user.name,
-            "uid": auth.user.id,
-            "isOwner": isOwner(),
-            "link": partyUrl,
-            "msg": sendMessageRef.current.value
-        })
-        sendMessageRef.current.value = ""
+        if (sendMessageRef.current.value != null && sendMessageRef.current.value.trim() !== '') {
+            socket.emit('sendMessage', {
+                "userName": auth.user.name,
+                "uid": auth.user.id,
+                "isOwner": isOwner(),
+                "link": partyUrl,
+                "msg": sendMessageRef.current.value.trim(),
+                "photo": auth.user.photo
+            })
+            sendMessageRef.current.value = ""
+        }
     }
 
     useEffect(() => {
@@ -67,35 +93,59 @@ export default function PartyHome({auth, roomData}) {
         if (!inRoom) {
             setTimeout(() => {
                 socket.connect()
+                if (socket.connect().connected) {
+                    socket.emit('connectedToRoom', {
+                        "uid": auth.user.id,
+                        "roomId": roomData.id,
+                        "isOwner": isOwner(),
+                        'ownerId': roomData.uid,
+                        "link": partyUrl,
+                        "userName": auth.user.name,
+                        "photo": auth.user.photo
+                    }, (newData) => {
+                        var members = []
+                        for (let i in newData.members) {
+                            members.push(newData.members[i])
+                        }
+                        setMembers(members)
+                        setVideoPlaying(newData.played)
+                        setConnectionStatus(true)
+                        setInRoom(true)
+                    })
+                }
             }, 2000)
         }
-        // let partyUrl = params.get('party');
 
         socket.on('connect_error', () => {
             setConnectionStatus(false)
-            window.location.href = window.location.href
+            notify("warn", "retrying to connect ...")
         })
 
-        socket.emit('connectedToRoom', {
-            "uid": auth.user.id,
-            "roomId": roomData.id,
-            "isOwner": isOwner(),
-            'ownerId': roomData.uid,
-            "link": partyUrl,
-            "userName": auth.user.name
-        }, (newData) => {
-            var members = []
-            for (let i in newData.members) {
-                members.push(newData.members[i])
-            }
-            setMembers(members)
-            setVideoPlaying(newData.played)
-            setConnectionStatus(true)
-            setInRoom(true)
+        socket.on("connect", () => {
+            // console.log("connected")
+            $(".announceMessage").remove()
+            notify("success", "Connected to the room")
+            socket.emit('connectedToRoom', {
+                "uid": auth.user.id,
+                "roomId": roomData.id,
+                "isOwner": isOwner(),
+                'ownerId': roomData.uid,
+                "link": partyUrl,
+                "userName": auth.user.name,
+                "photo": auth.user.photo
+            }, (newData) => {
+                var members = []
+                for (let i in newData.members) {
+                    members.push(newData.members[i])
+                }
+                setMembers(members)
+                setVideoPlaying(newData.played)
+                setConnectionStatus(true)
+                setInRoom(true)
+            })
         })
 
         socket.on('roomUsersChanged', (newData) => {
-            // console.log(newData)
             var members = []
             for (let i in newData.members) {
                 members.push(newData.members[i])
@@ -103,31 +153,108 @@ export default function PartyHome({auth, roomData}) {
             setMembers(members)
         })
 
+        socket.on("newUserJoined", (user) => {
+            let message = `
+                <div class="announceMessage flex flex-row gap-2 mb-4">
+                    <div class="border-2 flex items-center px-2.5 py-1.5 rounded-xl rtl text-[11pt] text-center w-full">
+                        <p class="w-full">
+                            <span class="text-cyan-500 mb-0.5">${user.name}</span>
+                            <span> joined the room</span>
+                        </p>
+                    </div>
+                </div>
+            `
+            if (auth.user.id !== user.id) {
+                $(message).insertBefore($(".last-message-scroller"))
+                setUsersOpen(false)
+                setChatOpen(true)
+                setChatActive(true)
+                messagesRef.current?.scrollIntoView({behavior: "smooth"})
+            }
+        })
+
+        socket.on("userLeft", (user) => {
+            let message = `
+                <div class="announceMessage flex flex-row gap-2 mb-4">
+                    <div class="border-2 flex items-center px-2.5 py-1.5 rounded-xl rtl text-[11pt] text-center w-full">
+                        <p class="w-full">
+                            <span class="text-cyan-500 mb-0.5">${user.name}</span>
+                            <span> left the room</span>
+                        </p>
+                    </div>
+                </div>
+            `
+            if (auth.user.id !== user.id) {
+                $(message).insertBefore($(".last-message-scroller"))
+                setUsersOpen(false)
+                setChatOpen(true)
+                setChatActive(true)
+                messagesRef.current?.scrollIntoView({behavior: "smooth"})
+            }
+        })
+
         socket.on('newMessage', (msgData) => {
-            setMessages(oldMessages => [
-                ...oldMessages,
-                msgData
-            ])
+            setUsersOpen(false)
+            setChatOpen(true)
+            setChatActive(true)
+            if (msgData.uid === auth.user.id) {
+                let message = `
+                    <div id="myMessage" class="message flex flex-row-reverse gap-2 mb-4">
+                        <img
+                            src=${auth.user.photo !== null ? "../" + auth.user.photo : "../contents/users/default/profile.jpg"}
+                            alt=${msgData.userName + " profile"}
+                            class="mobile:w-[2.5rem] lg:w-[3rem] mobile:h-[2.5rem] lg:h-[3rem] rounded-full object-cover"
+                        />
+                        <div class="w-max min-w-[170px] lg:max-w-[calc(100%-111px)] md:max-w-[60%] mobile:max-w-full text-[11pt] flex items-center rtl px-2.5 py-1.5 border-[#6100FF] border-2 rounded-xl">
+                            <p class="break-words ${isRtl(msgData.msg) ? "text-right" : "text-left"}">
+                                ${msgData.msg}
+                            </p>
+                        </div>
+                    </div>
+                `
+                $(message).insertBefore($(".last-message-scroller"))
+            } else {
+                let message = `
+                    <div id="otherMessage" class="message flex flex-row gap-2 mb-4" user=${msgData.uid}>
+                        <img
+                            src=${"../" + msgData.photo}
+                            alt=${msgData.userName + " profile"}
+                            class="mobile:w-[2.5rem] lg:w-[3rem] mobile:h-[2.5rem] lg:h-[3rem] rounded-full object-cover"
+                        />
+                        <div class="w-max min-w-[170px] lg:max-w-[calc(100%-111px)] md:max-w-[60%] mobile:max-w-full text-[11pt] flex items-center rtl px-2.5 py-1.5 border-[#0094FF] border-2 rounded-xl">
+                            <p class="w-full break-words ${isRtl(msgData.msg) ? "text-right" : "text-left"}"><span
+                                class="text-cyan-500 mb-0.5 block ${isRtl(msgData.userName) ? "text-right" : "text-left lg:w-full"}">${msgData.isOwner ? "⭐" : ""}${msgData.userName}</span>
+                                ${msgData.msg}
+                            </p>
+                        </div>
+                    </div>
+                `
+                $(message).insertBefore($(".last-message-scroller"))
+            }
         })
 
         return () => {
             setInRoom(false)
+            socket.off("connect")
+            socket.off("connect_error")
+            socket.off("roomUsersChanged")
+            socket.off("newUserJoined")
+            socket.off("userLeft")
+            socket.off("newMessage")
             socket.disconnect();
         }
-    }, [socket]);
-
-    // TODO Fix socket connection problem. connected custom listener need to check and debug.
+    }, []);
 
     useEffect(() => {
         messagesRef.current?.scrollIntoView({behavior: "smooth"})
     }, [messages]);
 
     const isOwner = () => {
-        if (roomData.uid === auth.user.id && auth.user.room === roomData.id) {
-            return true
-        } else {
-            return false
-        }
+        return roomData.uid === auth.user.id && auth.user.room === roomData.id;
+    }
+
+    const isRtl = (text) => {
+        return /[^\x00-\x7F]/.test(text);
     }
 
     const handleMessageFocus = () => {
@@ -144,18 +271,26 @@ export default function PartyHome({auth, roomData}) {
                 setUsersOpen(false)
                 setChatOpen(true)
                 setChatActive(true)
+                $(".announceMessage").show()
+                $(".message").show()
             } else {
                 setChatOpen(!chatOpen)
                 setChatActive(true)
+                $(".announceMessage").show()
+                $(".message").show()
             }
         } else {
             if (usersOpen) {
                 setUsersOpen(false)
                 setChatOpen(true)
                 setChatActive(true)
+                $(".announceMessage").show()
+                $(".message").show()
             } else {
                 setChatOpen(true)
                 setChatActive(true)
+                $(".announceMessage").show()
+                $(".message").show()
             }
         }
     }
@@ -166,18 +301,26 @@ export default function PartyHome({auth, roomData}) {
                 setChatOpen(false)
                 setUsersOpen(true)
                 setChatActive(false)
+                $(".announceMessage").hide()
+                $(".message").hide()
             } else {
                 setUsersOpen(!usersOpen)
                 setChatActive(false)
+                $(".announceMessage").hide()
+                $(".message").hide()
             }
         } else {
             if (chatOpen) {
                 setChatOpen(false)
                 setUsersOpen(true)
                 setChatActive(false)
+                $(".announceMessage").hide()
+                $(".message").hide()
             } else {
                 setUsersOpen(true)
                 setChatActive(false)
+                $(".announceMessage").hide()
+                $(".message").hide()
             }
         }
     }
@@ -214,6 +357,36 @@ export default function PartyHome({auth, roomData}) {
             clearTimeout(req)
         }
     }, [percentage, setPercentage, queue, setQueue, process, setProcess]);
+
+    const notify = (type, desc, theme = "dark") => {
+        switch (type) {
+            case "info":
+                toast.info(desc, {
+                    theme: theme
+                })
+                break
+            case "error":
+                toast.error(desc, {
+                    theme: theme
+                })
+                break
+            case "success":
+                toast.success(desc, {
+                    theme: theme
+                })
+                break
+            case "warn":
+                toast.warn(desc, {
+                    theme: theme
+                })
+                break
+            default:
+                toast.info(desc, {
+                    theme: theme
+                })
+        }
+    }
+
     var css = `
         body {
             overflow: hidden;
@@ -223,10 +396,11 @@ export default function PartyHome({auth, roomData}) {
         <>
             <PubNavbar auth={auth}/>
             <style>{css}</style>
-            <div className="lg:pt-[4.2rem] mobile:pt-[3.2rem] lg:pb-[1rem] mx-auto w-[100vw] h-[100vh]">
+            <div
+                className="lg:pt-[4.2rem] mobile:pt-[3.2rem] lg:pb-[1rem] mx-auto w-[100vw] h-[100vh] mobile:fixed mobile:bottom-0">
                 <div className="w-full h-full lg:px-8">
                     <div
-                        className="lg:p-6 flex justify-between overflow-y-hidden mobile:flex-col lg:flex-row gap-6 border h-full border-gray-700 text-gray-900 dark:text-gray-100 backdrop-blur-lg bg-opacity-60 bg-black shadow-sm lg:rounded-lg">
+                        className="lg:p-6 flex justify-between mobile:flex-col lg:flex-row gap-6 border h-full border-gray-700 text-gray-900 dark:text-gray-100 backdrop-blur-lg bg-opacity-60 bg-black shadow-sm lg:rounded-lg">
                         <div
                             className="lg:w-[70%] mobile:h-full lg:gap-4 flex flex-col overflow-hidden">
                             {!process ? (
@@ -240,6 +414,7 @@ export default function PartyHome({auth, roomData}) {
                                                 auth={auth}
                                                 roomData={roomData}
                                                 playingStatus={videoPlaying}
+                                                connectionStatus={connectionStatus}
                                             />
                                         </StrictMode>
 
@@ -300,8 +475,14 @@ export default function PartyHome({auth, roomData}) {
                                 <Scrollbar>
                                     <div className={`w-full flex sm:flex-row mobile:flex-col gap-4 justify-between`}>
                                         <p className={`sm:text-xl mobile:text-lg`}>{roomData.title}</p>
-                                        <p>Status: <span
-                                            className={`${connectionStatus ? "text-[#3B9A00]" : "text-[#e68200]"}`}>{connectionStatus ? "Connected" : "Connecting"}</span>
+                                        <p>Ping: <span
+                                            className={`${connectionStatus ? "text-[#3B9A00]" : "text-[#e68200]"}`}>{connectionStatus ? ping : "Connecting"}</span>
+                                            <br/>
+                                            {socket.disconnected && (
+                                                <button onClick={() => socket.connect()}><span
+                                                    className={`text-[#ffc800]`}>Reconnect Now</span>
+                                                </button>
+                                            )}
                                         </p>
                                     </div>
                                     <div className={`flex items-center gap-2 mt-4`}>
@@ -361,39 +542,9 @@ export default function PartyHome({auth, roomData}) {
                                 <div
                                     className={`h-[90%] flex w-full mt-4 flex-col justify-end gap-4 transition-all duration-300`}>
                                     <div
-                                        className={`w-full h-full`}>
+                                        className={`w-full h-full chatContainer`}>
                                         <Scrollbar scrollbarWidth={0}>
-                                            {messages.map((msgData) => (
-                                                msgData.uid === auth.user.id ? (
-                                                    <div key={messages.indexOf(msgData)} id={`myMessage`}
-                                                         className={`flex flex-row-reverse gap-2 mb-4`}>
-                                                        <img src="../contents/users/1/profile.jpg"
-                                                             alt="profile Mr.MKZ"
-                                                             className={`mobile:w-[2.5rem] lg:w-[3rem] mobile:h-[2.5rem] lg:h-[3rem] rounded-full`}
-                                                        />
-                                                        <div
-                                                            className={`w-full text-[11pt] flex items-center px-2.5 py-1.5 bg-[#383838] border-[#6100FF] border-2 rounded-xl`}>
-                                                            <p className={`break-all`}>{msgData.msg}</p>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div key={messages.indexOf(msgData)} id={`otherMessage`}
-                                                         className={`flex flex-row gap-2 mb-4`}>
-                                                        <img src="../contents/users/2/profile.jpg"
-                                                             alt="profile Mr.MKZ"
-                                                             className={`mobile:w-[2.5rem] lg:w-[3rem] mobile:h-[2.5rem] lg:h-[3rem] rounded-full`}
-                                                        />
-                                                        <div
-                                                            className={`w-full text-[11pt] flex items-center px-2.5 py-1.5 bg-[#434343] border-[#0094FF] border-2 rounded-xl`}>
-                                                            <p className={`w-full break-all`}><span
-                                                                className={`text-cyan-500 mb-0.5`}>{msgData.userName}</span><br/>
-                                                                {msgData.msg}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                )
-                                            ))}
-                                            <div ref={messagesRef}></div>
+                                            <div ref={messagesRef} className={"last-message-scroller"}></div>
                                         </Scrollbar>
                                     </div>
                                     <div
@@ -402,10 +553,15 @@ export default function PartyHome({auth, roomData}) {
                                             ref={sendMessageRef}
                                             onFocus={handleMessageFocus}
                                             onBlur={handleMessageBlur}
+                                            onKeyUp={(key) => {
+                                                if (key.keyCode === 13) {
+                                                    sendMsg();
+                                                }
+                                            }}
                                             type="text"
                                             placeholder={`Write your message ...`}
-                                            className={`h-full w-[87%] mr-2 bg-transparent text-white placeholder-white border-none p-0 focus:ring-transparent`}/>
-                                        <button onClick={sendMsg} className="send-logo"></button>
+                                            className={`auto-dir h-full w-[87%] mr-2 bg-transparent text-white placeholder-white border-none p-0 focus:ring-transparent`}/>
+                                        <button onClick={sendMsg} type={`submit`} className="send-logo"></button>
                                     </div>
                                 </div>
                             ) : (
@@ -420,9 +576,10 @@ export default function PartyHome({auth, roomData}) {
                                                     <div
                                                         key={member.id}
                                                         className={`flex flex-row-reverse gap-4 items-center bg-[#383838] p-2 rounded-lg mb-2 cursor-pointer`}>
-                                                        <img src="../contents/users/2/profile.jpg"
-                                                             alt="profile Mr.MKZ"
-                                                             className={`lg:w-[3rem] mobile:w-[2.5rem] lg:h-[3rem] mobile:h-[2.5rem] rounded-full`}
+                                                        <img
+                                                            src={"../" + member.photo}
+                                                            alt={member.name + " profile"}
+                                                            className={`lg:w-[3rem] mobile:w-[2.5rem] lg:h-[3rem] mobile:h-[2.5rem] rounded-full object-cover`}
                                                         />
                                                         <p>{member.name}</p>
                                                     </div>
@@ -436,6 +593,9 @@ export default function PartyHome({auth, roomData}) {
                     </div>
                 </div>
             </div>
+            <ToastContainer
+                autoClose={2000}
+            />
         </>
     )
 }

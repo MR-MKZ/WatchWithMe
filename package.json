@@ -25,6 +25,7 @@
         "@react-icons/all-files": "^4.1.0",
         "express": "^4.18.2",
         "flowbite-react": "^0.5.0",
+        "jquery": "^3.7.1",
         "laravel-echo": "^1.15.3",
         "react-full-screen": "^1.1.1",
         "react-player": "^2.13.0",

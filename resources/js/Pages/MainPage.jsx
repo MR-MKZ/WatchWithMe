@@ -76,7 +76,7 @@ export default function Welcome({auth, rooms}) {
                     <div
                         className={`backdrop-blur-[8px] bg-[#1d2230e6] border border-[#0094FF] flex gap-3 justify-between lg:h-[192px] md:h-max md:flex-row mobile:flex-col mobile:w-full p-3 relative rounded-[20px] text-white lg:w-1/2`}>
                         <img
-                            className={`mobile:w-full object-cover rounded-lg md:w-1/2`}
+                            className={`mobile:w-full object-fill aspect-square rounded-lg md:w-1/2`}
                             src={window.location.origin + "/contents/videos/" + myRoom.id + "/" + myRoom.link + ".png"}
                             alt={myRoom.title}
                         />
@@ -127,7 +127,7 @@ export default function Welcome({auth, rooms}) {
                                     className={`lg:w-[305px] relative lg:h-[305px] md:w-[49%] mobile:w-full mobile:h-max flex flex-col justify-between gap-3 p-3 rounded-[20px] bg-[#1d2230e6] backdrop-blur-[8px] text-white border border-[#C0F]`}>
                                     <div className={`relative w-full h-1/2`}>
                                         <img
-                                            className={`w-full h-full rounded-[8px] object-cover`}
+                                            className={`w-full lg:aspect-square lg:h-full md:h-[230px] rounded-[8px] object-fill mobile:h-[200px]`}
                                             src={window.location.origin + "/contents/videos/" + room.id + "/" + room.link + ".png"}
                                             alt={room.title}
                                         />

@@ -1,10 +1,10 @@
-import React, {StrictMode, useCallback, useEffect, useRef, useState} from 'react'
+import React, {useCallback, useEffect, useRef, useState} from 'react'
 import ReactPlayer from 'react-player'
 import {getTrackBackground, Range} from "react-range";
 import {FullScreen, useFullScreenHandle} from "react-full-screen";
 
 
-export default function VideoPlayer({src, subtitle, messageInput, auth, roomData, playingStatus}) {
+export default function VideoPlayer({src, subtitle, messageInput, auth, roomData, playingStatus, connectionStatus}) {
 
     const playerBg = useRef(null)
     const playerWrapper = useRef(null)
@@ -95,6 +95,12 @@ export default function VideoPlayer({src, subtitle, messageInput, auth, roomData
     )
 
     useEffect(() => {
+        if (!connectionStatus) {
+            handlePause()
+        }
+    }, [connectionStatus]);
+
+    useEffect(() => {
         document.addEventListener("keydown", keyPress)
         return () => document.removeEventListener("keydown", keyPress)
     })
@@ -136,14 +142,22 @@ export default function VideoPlayer({src, subtitle, messageInput, auth, roomData
         })
     }, [state.status]);
 
-    socket.on('playPauseChanged', (data) => {
-        if (data) {
-            handlePlay()
-        } else {
-            handlePause()
-        }
-    })
-
+    useEffect(() => {
+        socket.once('playPauseChanged', (data) => {
+            if (data.playingStatus) {
+                handlePlay()
+            } else {
+                if (data.playedSeconds !== undefined) {
+                    setState({
+                        ...state,
+                        status: {...state.status, playedSeconds: data.playedSeconds}
+                    })
+                    playerRef.current.seekTo(data.playedSeconds)
+                }
+                handlePause()
+            }
+        })
+    }, [state]);
 
     useEffect(() => {
         socket.once('hostProgress', (progress) => {
@@ -151,7 +165,7 @@ export default function VideoPlayer({src, subtitle, messageInput, auth, roomData
                 handleSeekChange([progress])
             }
             if (progress < state.duration) {
-                handlePlay()
+                handlePlay(false)
             }
         })
     }, [state.status.playedSeconds]);
@@ -199,13 +213,17 @@ export default function VideoPlayer({src, subtitle, messageInput, auth, roomData
 
     var handlePlayPause = () => {
         setState({...state, playing: !state.playing})
-
+        // if (!state.playing === true) {
+        //     playAnimation()
+        // } else {
+        //     pauseAnimation()
+        // }
         if (isOwner()) {
             socket.emit("handlePlayPause", {
                 "uid": auth.user.id,
                 "link": partyUrl,
-                "playPauseStatus": !state.playing,
-                "playedSeconds": !state.playing === false ? state.status.playedSeconds : 0
+                "playingStatus": !state.playing,
+                "playedSeconds": state.status.playedSeconds
             })
         }
     }
@@ -232,6 +250,23 @@ export default function VideoPlayer({src, subtitle, messageInput, auth, roomData
         }
     }
 
+    const [showPlayAnimation, setShowPlayAnimation] = useState(false);
+    const [showPauseAnimation, setShowPauseAnimation] = useState(false);
+
+    const playAnimation = () => {
+        setShowPlayAnimation(true);
+        setTimeout(() => setShowPlayAnimation(false), 1000)
+    }
+
+    const pauseAnimation = () => {
+        setShowPauseAnimation(true);
+        setTimeout(() => setShowPauseAnimation(false), 1000)
+    }
+
+    const seekAnimation = (type) => {
+
+    }
+
     var handleSetPlaybackRate = e => {
         setState({...state, playbackRate: parseFloat(e.target.value)})
     }
@@ -244,8 +279,10 @@ export default function VideoPlayer({src, subtitle, messageInput, auth, roomData
         setState({...state, pip: !state.pip})
     }
 
-    var handlePlay = () => {
+    var handlePlay = (animation = true) => {
         setState({...state, playing: true})
+        if (animation)
+            playAnimation()
     }
 
     var handleEnablePIP = () => {
@@ -256,29 +293,50 @@ export default function VideoPlayer({src, subtitle, messageInput, auth, roomData
         setState({...state, pip: false})
     }
 
-    var handlePause = () => {
+    var handlePause = (animation = true) => {
         setState({...state, playing: false})
+        if (animation)
+            pauseAnimation()
+        setTimeout(() => {
+            setLoading(false)
+        })
     }
 
     var handleSeekMouseDown = e => {
-        setState({...state, seeking: true, playing: false})
+        setState({...state, seeking: false, playing: false})
+        socket.emit("handlePlayPause", {
+            "uid": auth.user.id,
+            "link": partyUrl,
+            "playingStatus": !state.playing,
+            "playedSeconds": state.status.playedSeconds
+        })
     }
 
     var handleSeekChange = e => {
         setState({...state, status: {...state.status, playedSeconds: e[0]}})
-        playerRef.current.seekTo(e[0])
-    }
-
-    var handleSeekMouseUp = e => {
-        setState({...state, seeking: false})
         if (isOwner()) {
             socket.emit("handleSeekChange", {
                 "uid": auth.user.id,
                 "link": partyUrl,
-                "playedSeconds": state.status.playedSeconds,
+                "playedSeconds": e[0],
                 "playingStatus": false
             })
         }
+        playerRef.current.seekTo(e[0])
+    }
+
+    var handleSeekMouseUp = e => {
+        setState({...state, seeking: true})
+        handlePause()
+        // setLoading(false)
+        // if (isOwner()) {
+        //     socket.emit("handleSeekChange", {
+        //         "uid": auth.user.id,
+        //         "link": partyUrl,
+        //         "playedSeconds": state.status.playedSeconds,
+        //         "playingStatus": false
+        //     })
+        // }
     }
 
     var handleProgress = progress => {
@@ -320,7 +378,6 @@ export default function VideoPlayer({src, subtitle, messageInput, auth, roomData
 
     var handleQuality = (e) => {
         let quality = e.target.value
-        console.log("VideoPLayer: " + quality);
         setQualityOpen(false)
         const internalPlayer = playerRef.current?.getInternalPlayer('hls');
         if (internalPlayer) {
@@ -349,7 +406,6 @@ export default function VideoPlayer({src, subtitle, messageInput, auth, roomData
     }
 
     const handleMouseMove = (e) => {
-        console.log("move");
         if (handleFullscreen.active) {
             e.preventDefault();
             setMouseMove(true);
@@ -426,8 +482,6 @@ export default function VideoPlayer({src, subtitle, messageInput, auth, roomData
                         playbackRate={state.playbackRate}
                         volume={vol.values[0]}
                         muted={state.muted}
-                        onReady={() => console.log('VideoPLayer: onReady')}
-                        onStart={() => console.log('VideoPLayer: onStart')}
                         onPlay={handlePlay}
                         onEnablePIP={handleEnablePIP}
                         onDisablePIP={handleDisablePIP}
@@ -439,12 +493,7 @@ export default function VideoPlayer({src, subtitle, messageInput, auth, roomData
                         onError={e => console.log('VideoPLayer:', e)}
                         onProgress={handleProgress}
                         onDuration={handleDuration}
-                        onPlaybackQualityChange={e => console.log('VideoPLayer: onPlaybackQualityChange', e)}
-                        onLoadStart={() => {
-                            console.log('VideoPLayer: ...I am loading...')
-                        }}
                         onLoadedData={() => {
-                            console.log('VideoPLayer: Data is loaded!')
                             setVideoLoaded(true)
                         }}
                         config={subtitle ? {
@@ -463,8 +512,12 @@ export default function VideoPlayer({src, subtitle, messageInput, auth, roomData
                             }
                         } : {}}
                     />
-                    <p className="absolute top-[5px] left-[10px] text-white z-[101] text-sm select-none">v1.0</p>
+                    <p className="absolute top-[5px] left-[10px] text-white z-[101] text-sm select-none">v1.3</p>
                     <p className="absolute top-[5px] right-[10px] text-white z-[101] text-sm select-none">{Math.round(state.status.loaded * 100)}%</p>
+                    <div
+                        className={`player-play-center absolute hidden items-center justify-center top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 bg-black/75 w-[65px] h-[65px] rounded-full ${showPlayAnimation ? "fadeInOut" : ""}`}></div>
+                    <div
+                        className={`player-pause-center absolute hidden items-center justify-center top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 bg-black/75 w-[65px] h-[65px] rounded-full ${showPauseAnimation ? "fadeInOut" : ""}`}></div>
                     <div
                         className={`absolute left-0 w-full top-0 ${state.playing && activeControls ? "h-full" : "h-[80%]"}`}
                         onClick={isOwner() ? handlePlayPause : console.log()}></div>

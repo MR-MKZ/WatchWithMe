@@ -2,15 +2,19 @@ import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
-import { Link, useForm, usePage } from '@inertiajs/react';
-import { Transition } from '@headlessui/react';
+import {Link, useForm, usePage} from '@inertiajs/react';
+import {Transition} from '@headlessui/react';
+import {toast, ToastContainer} from "react-toastify";
+import 'react-toastify/dist/ReactToastify.css';
+import $ from 'jquery';
+import {FileInput, Label} from "flowbite-react";
 
-export default function UpdateProfileInformation({ mustVerifyEmail, status, className = '', userData }) {
+export default function UpdateProfileInformation({mustVerifyEmail, status, className = '', userData}) {
     const user = userData ? userData : usePage().props.auth.user;
 
     // console.log(user)
 
-    const { data, setData, patch, errors, processing, recentlySuccessful } = useForm({
+    const {data, setData, patch, errors, processing, recentlySuccessful} = useForm({
         name: user.name,
         email: user.email,
     });
@@ -32,8 +36,28 @@ export default function UpdateProfileInformation({ mustVerifyEmail, status, clas
             </header>
 
             <form onSubmit={submit} className="mt-6 space-y-6">
+                {/*<div>*/}
+                {/*    {user.photo !== null ? (*/}
+                {/*        <img src={user.photo} alt={user.name}*/}
+                {/*             className={`w-[200px] aspect-square object-cover rounded-lg`}/>*/}
+                {/*    ) : (*/}
+                {/*        <p className={`text-white`}>No profile photo!</p>*/}
+                {/*    )}*/}
+                {/*    <div className="mb-2 block mt-4">*/}
+                {/*        <Label*/}
+                {/*            htmlFor="profilePhoto"*/}
+                {/*            value="Profile Photo"*/}
+                {/*        />*/}
+                {/*    </div>*/}
+                {/*    <FileInput*/}
+                {/*        helperText="Image size must be less than 10MB"*/}
+                {/*        id="profilePhoto"*/}
+                {/*        accept=".png, .jpg, .jpeg"*/}
+                {/*        onChange={handleProfilePhoto}*/}
+                {/*    />*/}
+                {/*</div>*/}
                 <div>
-                    <InputLabel htmlFor="name" value="Name" />
+                    <InputLabel htmlFor="name" value="Name"/>
 
                     <TextInput
                         id="name"
@@ -45,11 +69,11 @@ export default function UpdateProfileInformation({ mustVerifyEmail, status, clas
                         autoComplete="name"
                     />
 
-                    <InputError className="mt-2" message={errors.name} />
+                    <InputError className="mt-2" message={errors.name}/>
                 </div>
 
                 <div>
-                    <InputLabel htmlFor="email" value="Email" />
+                    <InputLabel htmlFor="email" value="Email"/>
 
                     <TextInput
                         id="email"
@@ -61,7 +85,7 @@ export default function UpdateProfileInformation({ mustVerifyEmail, status, clas
                         autoComplete="username"
                     />
 
-                    <InputError className="mt-2" message={errors.email} />
+                    <InputError className="mt-2" message={errors.email}/>
                 </div>
 
                 {mustVerifyEmail && user.email_verified_at === null && (
