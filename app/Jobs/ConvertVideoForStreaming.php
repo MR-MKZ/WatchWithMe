@@ -39,8 +39,8 @@ class ConvertVideoForStreaming implements ShouldQueue
         $FHDBitrate = (new X264('aac'))->setKiloBitrate(1500);
 
         $ffprobe = FFProbe::create();
-        $video = $ffprobe->streams("storage/app/uploads/videos/{$this->rooms->uid}/{$this->rooms->video}")->videos()->first();
-        $duration = explode(".", $ffprobe->format("storage/app/uploads/videos/{$this->rooms->uid}/{$this->rooms->video}")->get('duration'))[0];
+        $video = $ffprobe->streams(Storage::disk("upload-videos")->path("{$this->rooms->uid}/{$this->rooms->video}"))->videos()->first();
+        $duration = explode(".", $ffprobe->format(Storage::disk("upload-videos")->path("{$this->rooms->uid}/{$this->rooms->video}"))->get('duration'))[0];
         $this->rooms->duration = $duration;
         $this->rooms->update();
             
