@@ -21,7 +21,6 @@ export default function PartyHome({auth, roomData}) {
     const [usersOpen, setUsersOpen] = useState(false);
     const [isDesktop, setIsDesktop] = useState(window.innerWidth > 1024);
     const [members, setMembers] = useState([]);
-    const [messages, setMessages] = useState([]);
     const [connectionStatus, setConnectionStatus] = useState(false);
     const [chatActive, setChatActive] = useState(true);
     const [videoPlaying, setVideoPlaying] = useState(false);
@@ -213,6 +212,7 @@ export default function PartyHome({auth, roomData}) {
                     </div>
                 `
                 $(message).insertBefore($(".last-message-scroller"))
+                messagesRef.current?.scrollIntoView({behavior: "smooth"})
             } else {
                 let message = `
                     <div id="otherMessage" class="message flex flex-row gap-2 mb-4" user=${msgData.uid}>
@@ -230,6 +230,7 @@ export default function PartyHome({auth, roomData}) {
                     </div>
                 `
                 $(message).insertBefore($(".last-message-scroller"))
+                messagesRef.current?.scrollIntoView({behavior: "smooth"})
             }
         })
 
@@ -244,10 +245,6 @@ export default function PartyHome({auth, roomData}) {
             socket.disconnect();
         }
     }, []);
-
-    useEffect(() => {
-        messagesRef.current?.scrollIntoView({behavior: "smooth"})
-    }, [messages]);
 
     const isOwner = () => {
         return roomData.uid === auth.user.id && auth.user.room === roomData.id;
