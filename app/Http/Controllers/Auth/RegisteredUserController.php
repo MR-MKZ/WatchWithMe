@@ -36,6 +36,7 @@ class RegisteredUserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:' . User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'profilePhoto' => 'nullable|file|mimes:jpg,jpeg,png|max:10240'
         ]);
 
         $user = User::create([
@@ -44,20 +45,16 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        $file = $request->profilePhoto;
-
-
-        if (isset($file)) {
-            if ($file->extension() == "jpg" || $file->extension() == "jpeg" || $file->extension() == "png") {
+        if ($request->hasFile('profilePhoto')) {
+            $file = $request->file('profilePhoto');
+            if ($file->isValid()) {
                 $path = Storage::putFileAs(
-                    "/contents/users/" . $user->id,
+                    "contents/users/{$user->id}",
                     $file,
-                    $user->id . "." . $file->extension()
+                    "{$user->id}.{$file->getClientOriginalExtension()}"
                 );
-                
-                $user->photo = $path;
 
-                $user->update();
+                $user->update(['photo' => $path]);
             }
         }
 

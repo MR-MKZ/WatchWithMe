@@ -7,6 +7,7 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -43,21 +44,22 @@ class ProfileController extends Controller
 
     public function updatePhoto(Request $request)
     {
-        $file = $request->file("profilePhoto");
+        $request->validate([
+            'profilePhoto' => 'nullable|file|mimes:jpg,jpeg,png|max:10240'
+        ]);
 
-        if (isset($file)) {
-            if ($file->extension() == "jpg" || $file->extension() == "jpeg" || $file->extension() == "png") {
+        if ($request->hasFile('profilePhoto')) {
+            $file = $request->file('profilePhoto');
+            if ($file->isValid()) {
                 $path = Storage::putFileAs(
-                    "/contents/users/" . $request->user()->id,
+                    "contents/users/{$request->user()->id}",
                     $file,
-                    $request->user()->id . "." . $file->extension()
+                    "{$request->user()->id}.{$file->getClientOriginalExtension()}"
                 );
 
-                $request->user()->photo = $path;
+                $request->user()->save(['photo' => $path]);
             }
         }
-
-        $request->user()->save();
         return Redirect::route('profile.edit');
     }
 

@@ -2,48 +2,71 @@ import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
-import {Link, useForm, usePage} from '@inertiajs/react';
-import {Transition} from '@headlessui/react';
-import {toast, ToastContainer} from "react-toastify";
+import { Link, useForm, usePage } from '@inertiajs/react';
+import { Transition } from '@headlessui/react';
+import { toast, ToastContainer } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 import $ from 'jquery';
-import {FileInput, Label} from "flowbite-react";
+import { FileInput, Label } from "flowbite-react";
 
-export default function UpdateProfilePhotoForm({className = '', userData}) {
+export default function UpdateProfilePhotoForm({ className = '', userData }) {
     const user = userData ? userData : usePage().props.auth.user;
 
-    // console.log(user)
+    console.log(user)
 
-    const {data, setData, post, errors, processing, recentlySuccessful} = useForm({
-        profilePhoto: user.photo
+    const { data, setData, post, errors, processing, recentlySuccessful } = useForm({
+        profilePhoto: null
     });
 
     const handleProfilePhoto = (event) => {
         const file = event.target.files[0];
+        console.log('File selected:', file);
 
-        if (file.size <= 10 * 1024 * 1024) {
-            let partOfName = file.name.split(".")
-            let photoExtension = partOfName[partOfName.length - 1]
-            if (photoExtension === "jpg" || photoExtension === "jpeg" || photoExtension === "png") {
-                setData('profilePhoto', file)
+        if (file) {
+            console.log('File details:', {
+                name: file.name,
+                size: file.size,
+                type: file.type,
+                lastModified: file.lastModified
+            });
+
+            if (file.size <= 10 * 1024 * 1024) {
+                let partOfName = file.name.split(".")
+                let photoExtension = partOfName[partOfName.length - 1]
+                if (photoExtension === "jpg" || photoExtension === "jpeg" || photoExtension === "png") {
+                    setData('profilePhoto', file)
+                    notify('info', 'File selected successfully');
+                } else {
+                    $("#profilePhoto").val('')
+                    setData('profilePhoto', null)
+                    notify("error", "Only (.PNG .JPG .JPEG) allowed")
+                }
             } else {
                 $("#profilePhoto").val('')
                 setData('profilePhoto', null)
-                notify("error", "Only (.PNG .JPG .JPEG) allowed")
+                notify("error", "File size exceeds the limit of 10MB.")
             }
-        } else {
-            $("#profilePhoto").val('')
-            setData('profilePhoto', null)
-            notify("error", "File size exceeds the limit of 10MB.")
         }
     }
 
     const submit = (e) => {
         e.preventDefault();
 
-        post(route('profile.updatephoto'));
+        console.log('Submitting form with data:', data);
+        console.log('File selected:', data.profilePhoto);
 
-        window.location.reload();
+        post(route('profile.updatephoto'), {
+            preserveScroll: true,
+            forceFormData: true,
+            onSuccess: () => {
+                notify('success', 'Profile photo updated successfully');
+                // window.location.reload();
+            },
+            onError: (errors) => {
+                console.error('Upload errors:', errors);
+                notify('error', 'Failed to update profile photo');
+            },
+        });
     };
 
     const notify = (type, desc, theme = "dark") => {
@@ -89,7 +112,7 @@ export default function UpdateProfilePhotoForm({className = '', userData}) {
                 <div>
                     {user.photo !== null ? (
                         <img src={user.photo} alt={user.name}
-                             className={`md:w-[200px] aspect-square object-cover rounded-lg mobile:w-full`}/>
+                            className={`md:w-[200px] aspect-square object-cover rounded-lg mobile:w-full`} />
                     ) : (
                         <p className={`text-white`}>No profile photo!</p>
                     )}
