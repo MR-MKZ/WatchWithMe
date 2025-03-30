@@ -1,6 +1,6 @@
 import express from 'express'
-import {createServer} from 'http'
-import {Server} from 'socket.io'
+import { createServer } from 'http'
+import { Server } from 'socket.io'
 
 var app = express()
 app.set('port', 7040);

@@ -1,0 +1,55 @@
+services:
+    backend:
+        build:
+            context: ./backend
+            dockerfile: Dockerfile
+        container_name: laravel_backend
+        ports:
+            - "80:80"
+        # volumes:
+        #     - ./backend:/var/www/html
+        networks:
+            - app-network
+        depends_on:
+            db:
+                condition: service_healthy
+
+    socket-server:
+        build:
+            context: ./socket-server
+            dockerfile: Dockerfile
+        container_name: socket_server
+        ports:
+            - "3000:3000"
+            - "7040:7040"
+        networks:
+            - app-network
+
+    db:
+        image: mysql:latest
+        container_name: mysql_db
+        restart: always
+        environment:
+            MYSQL_ROOT_PASSWORD: 1234
+            MYSQL_DATABASE: "watchwithme"
+            MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+        volumes:
+            - db_data:/var/lib/mysql
+        networks:
+            - app-network
+        healthcheck:
+            test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p1234"]
+            interval: 20s
+            retries: 5
+            start_period: 60s
+
+networks:
+    app-network:
+        driver: bridge
+        ipam:
+            driver: default
+            config:
+                - subnet: 172.18.0.0/28
+
+volumes:
+    db_data:
