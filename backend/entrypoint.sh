@@ -32,19 +32,9 @@ if [ -f /var/www/html/artisan ]; then
     TASK=/etc/supervisor/conf.d/laravel-worker.conf
     touch $TASK
     cat > "$TASK" <<EOF
-    [program:watchwithme-scheduler]
-    process_name=%(program_name)s_%(process_num)02d
-    command=/bin/sh -c "while [ true ]; do (php /var/www/html/artisan schedule:run --verbose --no-interaction &); sleep 60; done"
-    autostart=true
-    autorestart=true
-    numprocs=1
-    user=$USER_NAME
-    stdout_logfile=/var/log/watchwithme_scheduler.out.log
-    redirect_stderr=true
-
     [program:watchwithme-worker]
     process_name=%(program_name)s_%(process_num)02d
-    command=php /var/www/html/artisan queue:work --sleep=3 --tries=3
+    command=php /var/www/html/artisan queue:work --timeout=0 --sleep=3 --tries=3
     autostart=true
     autorestart=true
     numprocs=$LARAVEL_PROCS_NUMBER

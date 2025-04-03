@@ -171,6 +171,8 @@ RUN composer install && npm i && npm run build
 
 RUN php /var/www/html/artisan storage:link
 
+RUN php /var/www/html/artisan key:generate
+
 RUN chown -R ${USER_NAME}:${GROUP_NAME} /var/www && \
     chown -R ${USER_NAME}:${GROUP_NAME} /var/log/ && \
     chown -R ${USER_NAME}:${GROUP_NAME} /etc/supervisor/conf.d/ && \
