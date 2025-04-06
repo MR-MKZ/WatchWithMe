@@ -64,6 +64,11 @@ Route::middleware('auth')->group(function () {
         Route::delete('/delete', [RoomController::class, 'deleteRoom'])->name('room.delete');
     });
 
+    Route::prefix('upload')->group(function () {
+        Route::post('/', [RoomController::class, 'uploadVideo'])->name('video.upload');
+        Route::post('/complete', [RoomController::class, 'completeUpload'])->name('video.complete');
+    });
+
 });
 
 

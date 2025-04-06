@@ -28,53 +28,33 @@ class RoomController extends Controller
 
     public function store(Request $request)
     {
-//        dd(User::find($request->user()->id));
         if ($request->user()->room) {
             return redirect()->route('room.home', [
                 'party' => $request->user()->link
             ]);
         } else {
-            $file = $request->file('video');
-            $extension = $file->extension();
             $link = Str::random(40);
-            if ($extension == "mkv" || $extension == "mp4" || $extension == "avi") {
-                $newFileName = Str::random(50) . "." . $extension;
-                $path = Storage::putFileAs(
-                    "uploads/videos/" . $request->user()->id,
-                    $request->file('video'),
-                    $newFileName
-                );
-                $request->validate([
-                    'title' => ['required', 'max:50'],
-                    'type' => ['required'],
-                    'video' => ['required']
-                ]);
+            $videoFileName = Str::random(50);
 
-                $room = Rooms::create([
-                    'title' => $request->title,
-                    'type' => $request->type,
-                    'video' => $newFileName,
-                    'uid' => $request->user()->id,
-                    'link' => $link
-                ]);
+            $request->validate([
+                'title' => ['required', 'max:50'],
+                'type' => ['required'],
+            ]);
 
-                CreateThumbnailFromVideo::dispatch($room);
-                ConvertVideoForStreaming::dispatch($room);
+            $room = Rooms::create([
+                'title' => $request->title,
+                'type' => $request->type,
+                'video' => $videoFileName,
+                'uid' => $request->user()->id,
+                'link' => $link
+            ]);
 
-                $room->processing = true;
-                $room->update();
-
-                $user = User::find($request->user()->id);
-                $user->room = $room->id;
-                $user->link = $link;
-                $user->update();
-
-                return redirect()->route('room.home', [
-                    'party' => $link
-                ]);
-            } else {
-                return response()->json("File type is not acceptable", 500);
-            }
+            return response()->json([
+                'message' => 'Room created successfully',
+                'room' => $room->id,
+                'file' => $videoFileName,
+                'link' => $room->link
+            ]);
         }
     }
 
@@ -133,21 +113,34 @@ class RoomController extends Controller
     public function deleteRoom(Request $request)
     {
         $room = Rooms::find($request->user()->room);
-        $user = User::find($request->user()->id);
-        Storage::disk('upload-videos')->deleteDirectory($user->id);
-        Storage::disk('secrets')->deleteDirectory($room->id);
-        Storage::disk('videos')->deleteDirectory($room->id);
-        $room->delete();
-        $user->room = null;
-        $user->link = null;
-        $user->update();
-        return redirect()->route('home');
+        if (!$room) {
+            $room = Rooms::where('uid', $request->user()->id)->first();
+        }
+
+        if ($room) {
+            $user = User::find($request->user()->id);
+
+            Storage::disk('upload-videos')->deleteDirectory($user->id);
+            Storage::disk('secrets')->deleteDirectory($room->id);
+            Storage::disk('videos')->deleteDirectory($room->id);
+
+            $room->delete();
+            $user->room = null;
+            $user->link = null;
+            $user->update();
+        }
+
+        if ($request->accepts(['application/json'])) {
+            return response()->json([
+                'status'=> true
+            ]);
+        } else {
+            return redirect()->route('home');
+        }
     }
 
     public function videoPlaylist(Request $request, $playlist)
     {
-        // $playlistName = $playlist . ".m3u8";
-        // dd($room);
         return FFMpeg::dynamicHLSPlaylist()
             ->fromDisk('videos')
             ->open($request->rid . "/" . $playlist)
@@ -164,7 +157,6 @@ class RoomController extends Controller
             })
             ->setPlaylistUrlResolver(function ($playlistFilename) {
                 global $request;
-                // dd($playlistFilename);
                 return route('video.playlist', [
                     'playlist' => $playlistFilename,
                     'rid' => $request->rid
@@ -174,8 +166,102 @@ class RoomController extends Controller
 
     public function videoKey(Request $request, $key)
     {
-        // $room = Rooms::find($request->roomId);
-        // dd($room);
         return Storage::disk('secrets')->download($request->rid . "/" . $key);
+    }
+
+    public function uploadVideo(Request $request)
+    {
+        $file = $request->file('chunk');
+        $chunkNumber = $request->input('index');
+        $totalChunks = $request->input('total');
+        $fileName = $request->input('filename');
+        $extension = $request->input('videoExtension');
+        $type = $request->input('videoType');
+
+        $newFileName = "{$fileName}.part{$chunkNumber}";
+
+        $acceptableFiles = ["mp4", "mkv", "avi"];
+        $acceptableTypes = ["video/x-matroska","video/mp4","video/avi"];
+
+        if ($request->user()->room) {
+            return response()->json([
+                'error' => 'You already have a room'
+            ], 400);
+        }
+
+        if (!in_array($type, $acceptableTypes)) {
+            return response()->json("File type is not acceptable", 400);
+        }
+
+        if (!in_array($extension, $acceptableFiles)) {
+            return response()->json("File type is not acceptable", 400);
+        }
+
+        Storage::putFileAs(
+            "uploads/chunks/{$request->user()->id}",
+            $file,
+            $newFileName
+        );
+
+        if ($chunkNumber == $totalChunks) {
+            $this->mergeChunks($fileName, $totalChunks, $request, $extension);
+        }
+
+        return response()->json([
+            'message' => 'Chunk uploaded successfully',
+            'chunk' => $chunkNumber,
+            'total' => $totalChunks,
+            'extension' => $extension
+        ]);
+    }
+
+    private function mergeChunks($fileName, $totalChunks, Request $request, $extension)
+    {
+        $userId = $request->user()->id;
+
+        $chunkDisk = 'local';
+        $chunkDir = "uploads/chunks/{$userId}";
+        $chunkPrefix = "{$fileName}.part";
+
+        $finalPath = "{$userId}/{$fileName}.{$extension}";
+
+        if (!Storage::disk($chunkDisk)->exists("uploads/videos/{$userId}")) {
+            Storage::disk($chunkDisk)->makeDirectory("uploads/videos/{$userId}");
+        }
+
+        $fullFilePath = storage_path("app/uploads/videos/{$finalPath}");
+        $output = fopen($fullFilePath, 'wb');
+
+        for ($i = 1; $i <= $totalChunks; $i++) {
+            $chunkFilePath = "{$chunkDir}/{$chunkPrefix}{$i}";
+
+            if (!Storage::disk($chunkDisk)->exists($chunkFilePath)) {
+                throw new \Exception("Missing chunk: {$chunkFilePath}");
+            }
+
+            $chunkStream = Storage::disk($chunkDisk)->readStream($chunkFilePath);
+            stream_copy_to_stream($chunkStream, $output);
+            fclose($chunkStream);
+
+            Storage::disk($chunkDisk)->delete($chunkFilePath);
+        }
+
+        fclose($output);
+
+        $room = Rooms::where('uid', $userId)->first();
+
+        $room->video = "{$fileName}.{$extension}";
+        $room->save();
+
+        CreateThumbnailFromVideo::dispatch($room);
+        ConvertVideoForStreaming::dispatch($room);
+
+        $room->processing = true;
+        $room->save();
+
+        $user = User::find($userId);
+        $user->room = $room->id;
+        $user->link = $room->link;
+        $user->save();
     }
 }

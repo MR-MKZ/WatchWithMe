@@ -12,6 +12,7 @@ export default function Authenticated({auth, header, children}) {
             </div>
             <ToastContainer
                 autoClose={5000}
+                theme='dark'
             />
         </>
     );
